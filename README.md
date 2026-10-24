@@ -1,4 +1,4 @@
-# Agentic RAG
+# Local-First Multi-Agent RAG Platform
 
 A local-first, multi-agent question-answering platform. A **LangGraph supervisor** decides whether a
 question needs your documents, the web, or a calculation, sends it to the right **worker**, and
