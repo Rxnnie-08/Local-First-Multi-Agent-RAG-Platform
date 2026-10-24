@@ -43,6 +43,8 @@ class CaseResult(BaseModel):
     source_hit: bool | None = None  # an expected source file was among the cited passages
     answer_ok: bool | None = None  # required strings appear in the answer
     abstain_ok: bool | None = None  # the system said it could not find the answer
+    # Answerable document question where the system refused instead of answering.
+    false_refusal: bool | None = None
     web_ok: bool | None = None  # a web answer cited at least one URL
     passed: bool = False
     error: str | None = None
@@ -89,6 +91,8 @@ def evaluate_case(case: EvalCase, response: AgentResponse, *, latency_s: float) 
     )
     if case.abstain:
         result.abstain_ok = is_abstention(response.answer)
+    if case.evidence is not None and not case.abstain and case.expect_first == "rag":
+        result.false_refusal = is_abstention(response.answer) and result.answer_ok is not True
     if case.category == "web":
         result.web_ok = bool(response.answer.strip()) and any(
             re.match(r"https?://", c.source) for c in response.citations
@@ -115,6 +119,7 @@ class Summary(BaseModel):
     routing_accuracy: float
     source_hit_rate: float | None
     abstention_rate: float | None
+    false_refusal_rate: float | None = None
     answer_accuracy: float | None
     errors: int
     latency_mean_s: float
@@ -155,6 +160,7 @@ def summarize(results: Sequence[CaseResult]) -> Summary:
         routing_accuracy=sum(r.route_ok for r in results) / n if n else 0.0,
         source_hit_rate=_rate([r.source_hit for r in results]),
         abstention_rate=_rate([r.abstain_ok for r in results]),
+        false_refusal_rate=_rate([r.false_refusal for r in results]),
         answer_accuracy=_rate([r.answer_ok for r in results if r.category != "direct"]),
         errors=sum(r.error is not None for r in results),
         latency_mean_s=mean(latencies),
@@ -247,6 +253,7 @@ def format_agent_report(report: AgentReport) -> str:
         f"  answer accuracy (where checkable):    {pct(s.answer_accuracy)}",
         f"  source hit rate (rag questions):      {pct(s.source_hit_rate)}",
         f"  abstention (unanswerable questions):  {pct(s.abstention_rate)}",
+        f"  false refusals (answerable, refused): {pct(s.false_refusal_rate)}",
         f"  errors: {s.errors}",
         "",
         f"  latency  mean {s.latency_mean_s:.1f}s  median {s.latency_median_s:.1f}s  "

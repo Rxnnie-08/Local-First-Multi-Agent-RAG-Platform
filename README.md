@@ -1,4 +1,4 @@
-# Agentic RAG
+# Local-First Multi-Agent RAG Platform
 
 A local-first, multi-agent question-answering platform. A **LangGraph supervisor** decides whether a
 question needs your documents, the web, or a calculation, sends it to the right **worker**, and
@@ -344,6 +344,21 @@ python scripts/run_evals.py --set eval/cases.jsonl --skip-live    # full suite, 
 python scripts/run_evals.py --set eval/cases.jsonl --model mistral:7b --label mistral
 ```
 
+**Held-out set.** `eval/heldout/` holds a second fictional corpus ("Kestrel Gateway": Markdown, plain
+text, source code and a PDF) and 42 questions, 10 of them unanswerable. The system was **not tuned
+against it**. Run it once, without changing prompts or thresholds, and report it separately from the
+development-set score:
+
+```powershell
+python scripts/run_evals.py --set eval/heldout/cases.jsonl --corpus eval/heldout/corpus --skip-live --label heldout
+```
+
+The report includes the **median latency**, the **abstention rate** on unanswerable questions and the
+**false-refusal rate** (answerable document questions the agent refused). Its collection is separate
+(`agentic_rag_eval_heldout`). The development set (`eval/cases.jsonl`) was used to diagnose and fix
+failures, so its scores are optimistic; treat only the held-out score as a generalisation estimate.
+If you tune anything after seeing held-out failures, that set stops being held out.
+
 Both scripts ingest `eval/corpus` into a **separate collection** (`agentic_rag_eval`), so your own
 documents are untouched. Reports are saved as JSON in `eval/reports/`.
 
@@ -375,6 +390,66 @@ so treat differences of a case or two as noise.
 | Answer correct end to end | 33 of 36 (92%) in the last full run with its summary; a later run, seen only as its failure list, had 2 failures |
 | Known failure | One paraphrase question whose answer exists only as a constant in source code (`LEASE_SECONDS = 90`) still fails on an 8B model |
 
+Findings worth knowing:
+
+- A cross-encoder scores *relevance*, not *answerability*. An in-domain question the documents do not answer can score 0.99, so the threshold cannot separate "answerable" from "not". Refusing has to come from the answer prompt.
+- Some correct paraphrase answers score very low (0.007), which is why the passage floor is 0.001 and not 0.05.
+- When retrieval is weak the agent falls back to web search. Asking about a private fictional product then returns real companies with the same name, which the answer prompt now handles by asking which one is meant.
+
+## Security
+
+- **Network:** the API listens on `127.0.0.1` by default. `scripts/serve.py` refuses any other address unless `API_KEY` is set. Qdrant and Phoenix are bound to localhost.
+- **Authentication:** an optional API key checked in constant time. The chat page itself carries no data and is served without it; every data call needs the key.
+- **No path ingestion endpoint:** anyone able to reach the API could otherwise read any file the server can. Uploads go to one fixed directory with sanitised names, an extension allow-list and a size cap.
+- **Code execution:** the sandbox flags above. This is why the API runs on the host: starting sandboxes from inside a container would need the Docker socket, which is root-equivalent on the host.
+- **Prompt injection:** web snippets and script output can contain instructions. The answer prompt tells the model to treat passages as data, which reduces the risk and does not remove it.
+- **Browser:** a strict Content-Security-Policy (own script and style only, own origin only, no framing). The page builds DOM nodes and never assigns HTML strings, so model or document text cannot inject markup; a test enforces this.
+- **Privacy:** only the web worker sends text (the search query) off the machine. Traces contain prompts and documents; they stay local unless you point `TRACING_ENDPOINT` elsewhere.
+
+## Development
+
+```powershell
+pytest                                   # unit tests: no Ollama, Qdrant or Docker needed
+pytest -m integration                    # live tests: needs Ollama, Qdrant and Docker
+ruff check . ; ruff format --check .     # lint and format
+mypy                                     # strict type check (src, tests and scripts)
+```
+
+`make` targets: `install`, `test`, `integration`, `lint`, `format`, `typecheck`, `up`, `down`,
+`smoke`, `ingest-samples`, `chat`, `serve`, `tools`, `sandbox-image`, `eval`, `eval-full`,
+`eval-retrieval`.
+
+Unit tests use a scripted fake Ollama (an httpx mock transport), an in-memory Qdrant, a fake
+reranker and a fake sandbox process, so they are fast and deterministic. A real browser check of the
+chat page and a real-socket test of streaming and disconnects were run separately and are not part
+of the suite. Python 3.10 compatibility is a target (for example, no `datetime.UTC`).
+
+### Layout
+
+```
+docker-compose.yml            Qdrant and Phoenix (Ollama stays on the host)
+samples/                      small corpus for the demo and tests
+eval/                         evaluation corpus, cases.jsonl and saved reports
+scripts/                      smoke_test, ingest, query, chat, serve, check_tools,
+                              eval_retrieval, run_evals
+src/agentic_rag/
+  config/                     typed, validated settings
+  core/                       exceptions, logging, tracing entry point
+  llm/                        Ollama client (chat, embed, streaming), structured extraction, metrics
+  embeddings/                 dense (Ollama) and sparse (hashed BM25) encoders
+  ingestion/                  parsers, structure-aware chunker, idempotent pipeline
+  vectorstore/                Qdrant store: dense + sparse vectors, RRF hybrid search
+  retrieval/                  hybrid retriever, FlashRank reranker
+  agents/                     graph, supervisor, synthesizer, prompts, workers (rag, web, python)
+  sandbox/                    Docker code runner
+  websearch/                  search provider interface and DuckDuckGo implementation
+  observability/              OpenTelemetry spans with OpenInference attributes
+  evaluation/                 datasets, scoring, retrieval and agent evaluators
+  api/                        FastAPI app, schemas, and the chat page (static/)
+  services.py                 composition root
+tests/                        unit and integration tests
+```
+
 ## Design decisions
 
 - **Hybrid search inside Qdrant** (Query API prefetch plus fusion), so one round trip returns a fused ranking. RRF scores are rank-based and depend on the server's constant, so use them for ordering only.
@@ -402,5 +477,32 @@ The routing model call is the largest warm cost, which is why a deterministic po
 everything it can. Keep `OLLAMA_KEEP_ALIVE=30m` so the model stays loaded; the client sends it on
 every request and overrides the server's own setting.
 
+## Troubleshooting
 
+| Symptom | Likely cause and fix |
+| --- | --- |
+| First answer takes about a minute | The model was being loaded. Ask again; keep `OLLAMA_KEEP_ALIVE=30m` |
+| `Cannot reach Ollama` | Start Ollama; use `127.0.0.1`, not `localhost` (on Windows `localhost` can add about 250 ms per request) |
+| Model not found | `ollama pull llama3.1:8b` and `ollama pull nomic-embed-text` |
+| Chat says "code worker disabled" | Start Docker Desktop and run `docker pull python:3.12-slim` |
+| `/ready` returns 503 | The JSON body says which of Ollama, the model or Qdrant is missing |
+| API returns 409 | A turn is still running on that thread; wait or press Stop |
+| API returns 401 | `API_KEY` is set; send it as `X-API-Key` |
+| Phoenix shows `unhealthy` | The image has no shell, so the healthcheck uses the exec form; use the compose file in this repo |
+| Answers ignore a document you just changed | Re-ingest it; unchanged files are skipped, changed ones are replaced |
+| Changed `EMBEDDING_MODEL` and results are empty | Dimensions differ; re-ingest with `python scripts/ingest.py <path> --reset` |
+| Eval runs say "Evaluation set not found" | The path is relative to the project folder; `eval/cases.jsonl` must exist |
 
+## Known limits
+
+- Scanned PDFs are rejected (no OCR), and PDF chunks never span pages.
+- Conversation memory is in the server process and lost on restart; there is no summarisation.
+- Do not run two turns on the same thread at once (the API enforces this with 409).
+- The code sandbox image has only the standard library.
+- An 8B model is weak at paraphrased questions answered only by constants in source code, and its refusal behaviour depends on the prompt rather than on a calibrated score.
+- When retrieval is weak the agent may search the web, so a question about private material can send its text to DuckDuckGo. Set `WEB_SEARCH_ENABLED=false` for a fully local mode.
+- `ddgs` is an unofficial scraper and can be rate-limited.
+- There is no dark mode and no history endpoint, so reloading the chat page starts a blank view.
+- The evaluation suite is small (24 retrieval and 36 agent cases); the results are indicative, not statistically strong.
+- The API server buffers an upload before checking its per-file size, so a very large request is only rejected early when the client sends a Content-Length.
+- Not yet run in this form: a quantization comparison (speed against accuracy) across llama3.1:8b variants.

@@ -1,0 +1,21 @@
+Kestrel Gateway: limits and retention policy
+
+Rate limits
+The free tier allows 600 requests per minute per API key.
+The business tier allows 6000 requests per minute per API key.
+A client over its limit receives HTTP 429 with a Retry-After header.
+
+Request size
+The maximum request body is 8 MB. Larger bodies are rejected with HTTP 413.
+
+Data retention
+Access logs are retained for 45 days.
+Audit records for administrative changes are retained for 730 days.
+Metrics are kept at one-minute resolution for 14 days and then downsampled to one hour.
+
+Support
+Priority incidents are acknowledged within 15 minutes on the business tier.
+The free tier has community support only and no response-time commitment.
+
+Maintenance
+Planned maintenance happens on the first Tuesday of each month between 02:00 and 03:00 UTC.

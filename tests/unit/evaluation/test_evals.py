@@ -291,3 +291,33 @@ def test_summary_rates_and_categories() -> None:
     assert s.by_category["rag_fact"].answer_ok == 1
     assert s.by_category["rag_fact"].answer_checked == 2
     assert summarize([]).pass_rate == 0.0
+
+
+def test_false_refusal_counts_only_answerable_cases_that_were_refused() -> None:
+    ok = ["supervisor", "rag", "synthesize"]
+    evidence = {"evidence": "port 9310", "sources": ["g.md"]}
+    refused = evaluate_case(
+        case(id="1", answer_contains=["9310"], **evidence),
+        response("I could not find that in the documents.", ok),
+        latency_s=1.0,
+    )
+    answered = evaluate_case(
+        case(id="2", answer_contains=["9310"], **evidence),
+        response("Port 9310.", ok),
+        latency_s=1.0,
+    )
+    wrong = evaluate_case(
+        case(id="3", answer_contains=["9310"], **evidence), response("Port 80.", ok), latency_s=1.0
+    )
+    unanswerable = evaluate_case(
+        case(id="4", category="abstain", abstain=True), response("not found", ok), latency_s=1.0
+    )
+    assert (refused.false_refusal, answered.false_refusal, wrong.false_refusal) == (
+        True,
+        False,
+        False,
+    )
+    assert unanswerable.false_refusal is None
+    assert summarize([refused, answered, wrong, unanswerable]).false_refusal_rate == pytest.approx(
+        1 / 3
+    )

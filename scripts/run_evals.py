@@ -49,7 +49,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--limit", type=int, help="run only the first N selected cases")
     p.add_argument("--trace", action="store_true", help="send traces to Phoenix (project: eval)")
     p.add_argument("--label", help="report file label (default: the model name)")
-    p.add_argument("--collection", default="agentic_rag_eval", help="Qdrant collection to query")
+    p.add_argument("--collection", help="Qdrant collection (default: one per corpus)")
+    p.add_argument(
+        "--corpus", default="eval/corpus", help="folder of documents the cases are written against"
+    )
     p.add_argument("--no-ingest", action="store_true", help="do not ingest eval/corpus first")
     return p.parse_args()
 
@@ -64,8 +67,18 @@ def show(done: int, total: int, r: CaseResult) -> None:
 
 async def main() -> int:
     args = parse_args()
+    corpus = Path(args.corpus)
+    if not corpus.is_absolute():
+        corpus = ROOT / corpus
+    if not corpus.is_dir():
+        print(f"Corpus folder not found at {corpus}.")
+        return 1
+    # eval/corpus keeps its historical collection name; any other corpus gets its own.
+    default_collection = (
+        "agentic_rag_eval" if corpus == CORPUS else f"agentic_rag_eval_{corpus.parent.name}"
+    )
     update: dict[str, object] = {
-        "qdrant_collection": args.collection,
+        "qdrant_collection": args.collection or default_collection,
         "tracing_enabled": args.trace,
         "tracing_project": "agentic-rag-eval",
     }
@@ -80,8 +93,8 @@ async def main() -> int:
     if not path.exists():
         print(f"Evaluation set not found at {path}.")
         return 1
-    cases = load_any(path, CORPUS)
-    if path.suffix == ".jsonl" and (problems := check_dataset(cases, CORPUS)):
+    cases = load_any(path, corpus)
+    if path.suffix == ".jsonl" and (problems := check_dataset(cases, corpus)):
         print("The evaluation set is inconsistent:\n  " + "\n  ".join(problems))
         return 1
     if args.category:
@@ -104,7 +117,7 @@ async def main() -> int:
                 )
                 return 1
             if not args.no_ingest:
-                await svc.pipeline.ingest_path(CORPUS)
+                await svc.pipeline.ingest_path(corpus)
             print(
                 f"Model {settings.ollama_model}; {len(cases)} cases; collection "
                 f"'{settings.qdrant_collection}'; workers: {', '.join(svc.agent.worker_names)}\n"
