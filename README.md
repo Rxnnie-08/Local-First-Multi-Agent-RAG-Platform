@@ -378,8 +378,11 @@ Case formats:
 
 ### Results so far
 
-Measured on the author's machine (CPU only, `llama3.1:8b`, `nomic-embed-text`). The sample is small,
-so treat differences of a case or two as noise.
+Measured on the author's machine (CPU only, `llama3.1:8b`, `nomic-embed-text`). The samples are
+small, so treat differences of a case or two as noise. Two sets are reported separately because
+they mean different things: the **development set** (`eval/cases.jsonl`, Orbit corpus) was used to
+find and fix failures, so its scores are optimistic; the **held-out set** (`eval/heldout/`, Kestrel
+corpus) was run once without tuning afterwards.
 
 | Measurement | Result |
 | --- | --- |
@@ -388,10 +391,15 @@ so treat differences of a case or two as noise.
 | Recall at 5 for every mode | 1.00, so re-ranking fixes ordering, not recall |
 | Routing, 36 cases | 36 of 36 correct on the first step |
 | Answer correct end to end | 33 of 36 (92%) in the last full run with its summary; a later run, seen only as its failure list, had 2 failures |
-| Known failure | One paraphrase question whose answer exists only as a constant in source code (`LEASE_SECONDS = 90`) still fails on an 8B model |
+| **Held-out set**, 42 cases, passed | 41 of 42 (98%); routing 100%, source hit rate 100% |
+| Held-out, unanswerable questions | 10 of 10 correctly refused |
+| Held-out, false refusals | 1 of 25 answerable document questions refused |
+| Held-out failure | The same weakness: a paraphrase answered only by a code constant (`HEALTH_CHECK_INTERVAL_SECONDS = 7`) |
+| Known failure (development set) | One paraphrase question whose answer exists only as a constant in source code (`LEASE_SECONDS = 90`) still fails on an 8B model |
 
 Findings worth knowing:
 
+- The held-out score (98%) is higher than the development score (92%). That does not show the system generalises better: the held-out corpus is smaller and cleaner, and its questions are easier. One miss moves the score by about 2.4 points, and the 95% interval for 41/42 is roughly 87 to 99.6%.
 - A cross-encoder scores *relevance*, not *answerability*. An in-domain question the documents do not answer can score 0.99, so the threshold cannot separate "answerable" from "not". Refusing has to come from the answer prompt.
 - Some correct paraphrase answers score very low (0.007), which is why the passage floor is 0.001 and not 0.05.
 - When retrieval is weak the agent falls back to web search. Asking about a private fictional product then returns real companies with the same name, which the answer prompt now handles by asking which one is meant.
@@ -406,103 +414,12 @@ Findings worth knowing:
 - **Browser:** a strict Content-Security-Policy (own script and style only, own origin only, no framing). The page builds DOM nodes and never assigns HTML strings, so model or document text cannot inject markup; a test enforces this.
 - **Privacy:** only the web worker sends text (the search query) off the machine. Traces contain prompts and documents; they stay local unless you point `TRACING_ENDPOINT` elsewhere.
 
-## Development
 
-```powershell
-pytest                                   # unit tests: no Ollama, Qdrant or Docker needed
-pytest -m integration                    # live tests: needs Ollama, Qdrant and Docker
-ruff check . ; ruff format --check .     # lint and format
-mypy                                     # strict type check (src, tests and scripts)
-```
 
-`make` targets: `install`, `test`, `integration`, `lint`, `format`, `typecheck`, `up`, `down`,
-`smoke`, `ingest-samples`, `chat`, `serve`, `tools`, `sandbox-image`, `eval`, `eval-full`,
-`eval-retrieval`.
-
-Unit tests use a scripted fake Ollama (an httpx mock transport), an in-memory Qdrant, a fake
-reranker and a fake sandbox process, so they are fast and deterministic. A real browser check of the
-chat page and a real-socket test of streaming and disconnects were run separately and are not part
-of the suite. Python 3.10 compatibility is a target (for example, no `datetime.UTC`).
-
-### Layout
 
 ```
-docker-compose.yml            Qdrant and Phoenix (Ollama stays on the host)
-samples/                      small corpus for the demo and tests
-eval/                         evaluation corpus, cases.jsonl and saved reports
-scripts/                      smoke_test, ingest, query, chat, serve, check_tools,
-                              eval_retrieval, run_evals
-src/agentic_rag/
-  config/                     typed, validated settings
-  core/                       exceptions, logging, tracing entry point
-  llm/                        Ollama client (chat, embed, streaming), structured extraction, metrics
-  embeddings/                 dense (Ollama) and sparse (hashed BM25) encoders
-  ingestion/                  parsers, structure-aware chunker, idempotent pipeline
-  vectorstore/                Qdrant store: dense + sparse vectors, RRF hybrid search
-  retrieval/                  hybrid retriever, FlashRank reranker
-  agents/                     graph, supervisor, synthesizer, prompts, workers (rag, web, python)
-  sandbox/                    Docker code runner
-  websearch/                  search provider interface and DuckDuckGo implementation
-  observability/              OpenTelemetry spans with OpenInference attributes
-  evaluation/                 datasets, scoring, retrieval and agent evaluators
-  api/                        FastAPI app, schemas, and the chat page (static/)
-  services.py                 composition root
-tests/                        unit and integration tests
-```
 
-## Design decisions
 
-- **Hybrid search inside Qdrant** (Query API prefetch plus fusion), so one round trip returns a fused ranking. RRF scores are rank-based and depend on the server's constant, so use them for ordering only.
-- **A cycle, not a pipeline.** Every worker reports back, so the supervisor can try a second tool when the first finds nothing. The route enum is built from the registered workers, so a model cannot name a worker that does not exist.
-- **Confidence comes from the re-ranker**, not from fusion scores, which cannot say "nothing relevant".
-- **Noise is dropped, not just ranked.** Irrelevant passages never reach the answer prompt; in an early run, sending all five cost 1,200 prompt tokens and 23 s.
-- **Context is budgeted** and the settings validator enforces it at start-up.
-- **Rules before the model**, because routing calls dominate warm latency on CPU.
-- **Local-first with an escape hatch.** Everything runs locally; the one feature that leaves the machine is optional and clearly labelled.
-- **Streaming is not retried; plain calls are.** A retry after partial output would duplicate text.
-- **Deterministic evaluation** with a fictional corpus, so changes can be compared run to run without a judge model.
-- **The API runs on the host** because the sandbox needs Docker, and giving a container the Docker socket would give it root-equivalent control of the machine.
 
-## Performance
 
-Measured on a CPU-only laptop (16 GB RAM), `llama3.1:8b`, at roughly 8 tokens per second:
 
-| Situation | Typical time |
-| --- | --- |
-| First request after the model unloaded (cold load) | about 50 s |
-| Simple warm document question | about 6 s (routing 4.5 s, retrieval 0.3 s, answer 1.2 s) |
-| Questions needing several steps or code execution | longer, roughly 15 to 30 s (estimate, not a measured percentile) |
-
-The routing model call is the largest warm cost, which is why a deterministic policy handles
-everything it can. Keep `OLLAMA_KEEP_ALIVE=30m` so the model stays loaded; the client sends it on
-every request and overrides the server's own setting.
-
-## Troubleshooting
-
-| Symptom | Likely cause and fix |
-| --- | --- |
-| First answer takes about a minute | The model was being loaded. Ask again; keep `OLLAMA_KEEP_ALIVE=30m` |
-| `Cannot reach Ollama` | Start Ollama; use `127.0.0.1`, not `localhost` (on Windows `localhost` can add about 250 ms per request) |
-| Model not found | `ollama pull llama3.1:8b` and `ollama pull nomic-embed-text` |
-| Chat says "code worker disabled" | Start Docker Desktop and run `docker pull python:3.12-slim` |
-| `/ready` returns 503 | The JSON body says which of Ollama, the model or Qdrant is missing |
-| API returns 409 | A turn is still running on that thread; wait or press Stop |
-| API returns 401 | `API_KEY` is set; send it as `X-API-Key` |
-| Phoenix shows `unhealthy` | The image has no shell, so the healthcheck uses the exec form; use the compose file in this repo |
-| Answers ignore a document you just changed | Re-ingest it; unchanged files are skipped, changed ones are replaced |
-| Changed `EMBEDDING_MODEL` and results are empty | Dimensions differ; re-ingest with `python scripts/ingest.py <path> --reset` |
-| Eval runs say "Evaluation set not found" | The path is relative to the project folder; `eval/cases.jsonl` must exist |
-
-## Known limits
-
-- Scanned PDFs are rejected (no OCR), and PDF chunks never span pages.
-- Conversation memory is in the server process and lost on restart; there is no summarisation.
-- Do not run two turns on the same thread at once (the API enforces this with 409).
-- The code sandbox image has only the standard library.
-- An 8B model is weak at paraphrased questions answered only by constants in source code, and its refusal behaviour depends on the prompt rather than on a calibrated score.
-- When retrieval is weak the agent may search the web, so a question about private material can send its text to DuckDuckGo. Set `WEB_SEARCH_ENABLED=false` for a fully local mode.
-- `ddgs` is an unofficial scraper and can be rate-limited.
-- There is no dark mode and no history endpoint, so reloading the chat page starts a blank view.
-- The evaluation suite is small (24 retrieval and 36 agent cases); the results are indicative, not statistically strong.
-- The API server buffers an upload before checking its per-file size, so a very large request is only rejected early when the client sends a Content-Length.
-- Not yet run in this form: a quantization comparison (speed against accuracy) across llama3.1:8b variants.
