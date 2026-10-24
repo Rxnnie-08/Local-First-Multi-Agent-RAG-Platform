@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentic-rag"
+version = "0.1.0"
+description = "Local-first, multi-agent RAG platform"
+readme = "README.md"
+requires-python = ">=3.10"
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+agentic_rag = ["api/static/*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "tests"]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-ra --strict-markers -m 'not integration'"
+markers = ["integration: needs running Ollama and Qdrant (run with: pytest -m integration)"]
+filterwarnings = [
+  "ignore:Payload indexes have no effect:UserWarning",
+  "ignore:Failed to obtain server version:UserWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4", "PT", "ASYNC", "RUF"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+plugins = ["pydantic.mypy"]
+mypy_path = ["src", "tests"]
+files = ["src", "tests", "scripts"]
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = ["flashrank", "flashrank.*"]
+ignore_missing_imports = true

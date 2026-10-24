@@ -1,0 +1,23 @@
+[
+  {
+    "id": "eval_001",
+    "query": "What is the warranty policy for the Nexus-9 industrial drone battery?",
+    "expected_route": "rag",
+    "ground_truth_context": "The Nexus-9 battery carries a limited 24-month replacement warranty covering thermal degradation past 30%.",
+    "expected_answer_keywords": [
+      "24-month",
+      "replacement",
+      "thermal degradation",
+      "30%"
+    ]
+  },
+  {
+    "id": "eval_002",
+    "query": "Using an iterative loop, compute F(20) where F(0)=0 and F(1)=1.",
+    "expected_route": "python",
+    "ground_truth_context": "Dynamic code execution in the Docker sandbox; F(20) = 6765 (F(19) = 4181).",
+    "expected_answer_keywords": [
+      "6765"
+    ]
+  }
+]

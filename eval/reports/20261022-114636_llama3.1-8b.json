@@ -1,0 +1,113 @@
+{
+  "created": "2026-10-22T11:46:36+00:00",
+  "model": "llama3.1:8b",
+  "config": {
+    "ollama_model": "llama3.1:8b",
+    "ollama_num_ctx": 4096,
+    "ollama_temperature": 0.0,
+    "embedding_model": "nomic-embed-text",
+    "chunk_max_tokens": 400,
+    "chunk_overlap_tokens": 50,
+    "reranker": "flashrank",
+    "rerank_model": "ms-marco-MiniLM-L-12-v2",
+    "rerank_min_score": 0.25,
+    "rerank_min_passage_score": 0.05,
+    "rerank_top_n": 5,
+    "retrieval_candidates": 20,
+    "graph_max_steps": 4,
+    "answer_max_tokens": 512,
+    "answer_context_tokens": 1800
+  },
+  "summary": {
+    "n": 2,
+    "passed": 1,
+    "pass_rate": 0.5,
+    "routing_accuracy": 1.0,
+    "source_hit_rate": 1.0,
+    "abstention_rate": null,
+    "answer_accuracy": 0.5,
+    "errors": 0,
+    "latency_mean_s": 49.94037565001054,
+    "latency_median_s": 37.12186610000208,
+    "latency_p95_s": 62.758885200018995,
+    "mean_tokens_per_second": 5.577092989038945,
+    "total_prompt_tokens": 2305,
+    "total_completion_tokens": 223,
+    "by_category": {
+      "python": {
+        "n": 1,
+        "passed": 0,
+        "route_ok": 1,
+        "answer_ok": 0,
+        "answer_checked": 1
+      },
+      "rag_fact": {
+        "n": 1,
+        "passed": 1,
+        "route_ok": 1,
+        "answer_ok": 1,
+        "answer_checked": 1
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "eval_001",
+      "category": "rag_fact",
+      "question": "What is the warranty policy for the Nexus-9 industrial drone battery?",
+      "answer": "The Nexus-9 battery carries a limited 24-month replacement warranty covering thermal degradation past 30%. Damage from improper storage is not covered. [1]",
+      "route": [
+        "supervisor",
+        "rag",
+        "supervisor",
+        "synthesize"
+      ],
+      "expected_first": "rag",
+      "first": "rag",
+      "route_ok": true,
+      "source_hit": true,
+      "answer_ok": true,
+      "abstain_ok": null,
+      "web_ok": null,
+      "passed": true,
+      "error": null,
+      "latency_s": 62.758885200018995,
+      "supervisor_s": 45.50762480002595,
+      "worker_s": 1.3916823000181466,
+      "synthesize_s": 15.80667890002951,
+      "llm_calls": 2,
+      "prompt_tokens": 1120,
+      "completion_tokens": 71,
+      "tokens_per_second": 5.341951883007943
+    },
+    {
+      "id": "eval_002",
+      "category": "python",
+      "question": "Calculate the 20th Fibonacci number using an iterative loop.",
+      "answer": "The 20th Fibonacci number is 4181. [1]",
+      "route": [
+        "supervisor",
+        "python",
+        "supervisor",
+        "synthesize"
+      ],
+      "expected_first": "python",
+      "first": "python",
+      "route_ok": true,
+      "source_hit": null,
+      "answer_ok": false,
+      "abstain_ok": null,
+      "web_ok": null,
+      "passed": false,
+      "error": null,
+      "latency_s": 37.12186610000208,
+      "supervisor_s": 9.89922049996676,
+      "worker_s": 20.603380499989726,
+      "synthesize_s": 6.59854620002443,
+      "llm_calls": 3,
+      "prompt_tokens": 1185,
+      "completion_tokens": 152,
+      "tokens_per_second": 5.8122340950699485
+    }
+  ]
+}

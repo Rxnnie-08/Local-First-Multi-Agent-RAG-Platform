@@ -1,0 +1,65 @@
+# Qdrant (vectors) and Phoenix (traces). Ollama stays on the host (see OLLAMA_BASE_URL).
+# Start:  docker compose up -d      Stop:  docker compose down
+# Wipe data:  docker compose down -v
+name: agentic-rag
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.19.2
+    container_name: agentic-rag-qdrant
+    restart: unless-stopped
+    ports:
+      # Bound to localhost only: Qdrant has no auth by default.
+      - "127.0.0.1:6333:6333" # REST + dashboard (http://localhost:6333/dashboard)
+      - "127.0.0.1:6334:6334" # gRPC
+    volumes:
+      # Named volume, not a bind mount: database files on Windows bind mounts are slow
+      # and can corrupt under file-sync tools.
+      - qdrant_storage:/qdrant/storage
+    environment:
+      QDRANT__LOG_LEVEL: INFO
+    # Keeps Qdrant from competing with the LLM for your 16 GB.
+    mem_limit: 1g
+    healthcheck:
+      # Pure-bash TCP probe: the image does not ship curl/wget.
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 5s
+
+  phoenix:
+    # Pinned to a released version (not "latest"); the tag exists on Docker Hub as of 2026-10.
+    image: arizephoenix/phoenix:20.20.0
+    container_name: agentic-rag-phoenix
+    restart: unless-stopped
+    ports:
+      # UI and the OTLP/HTTP trace endpoint (/v1/traces) share this port. Localhost only:
+      # traces contain your prompts and document text, and Phoenix has no auth by default.
+      - "127.0.0.1:6006:6006"
+    volumes:
+      - phoenix_data:/mnt/data
+    environment:
+      PHOENIX_WORKING_DIR: /mnt/data
+    mem_limit: 1500m
+    healthcheck:
+      # The image has no shell and no curl, so this is the exec form (not CMD-SHELL) and calls the
+      # image's own Python by absolute path. Tries /healthz, falls back to the UI page.
+      test:
+        - CMD
+        - /usr/bin/python3.13
+        - -c
+        - |
+          import urllib.request as u
+          try:
+              u.urlopen("http://127.0.0.1:6006/healthz", timeout=4)
+          except Exception:
+              u.urlopen("http://127.0.0.1:6006/", timeout=4)
+      interval: 15s
+      timeout: 6s
+      retries: 6
+      start_period: 20s
+
+volumes:
+  qdrant_storage:
+  phoenix_data:

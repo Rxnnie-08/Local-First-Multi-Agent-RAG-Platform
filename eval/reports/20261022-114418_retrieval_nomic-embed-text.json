@@ -1,0 +1,399 @@
+{
+  "created": "2026-10-22T11:44:18+00:00",
+  "collection": "agentic_rag_eval",
+  "reranker": "flashrank",
+  "k": 10,
+  "modes": [
+    {
+      "mode": "dense",
+      "n": 24,
+      "hit_at_1": 0.75,
+      "hit_at_3": 0.9583333333333334,
+      "hit_at_5": 1.0,
+      "mrr": 0.8645833333333334,
+      "mean_latency_s": 0.18584511070678542
+    },
+    {
+      "mode": "sparse",
+      "n": 24,
+      "hit_at_1": 0.75,
+      "hit_at_3": 1.0,
+      "hit_at_5": 1.0,
+      "mrr": 0.8611111111111112,
+      "mean_latency_s": 0.026914774999438253
+    },
+    {
+      "mode": "hybrid",
+      "n": 24,
+      "hit_at_1": 0.75,
+      "hit_at_3": 0.9583333333333334,
+      "hit_at_5": 1.0,
+      "mrr": 0.8645833333333334,
+      "mean_latency_s": 0.17190118214680947
+    },
+    {
+      "mode": "hybrid+rerank",
+      "n": 24,
+      "hit_at_1": 0.9583333333333334,
+      "hit_at_3": 1.0,
+      "hit_at_5": 1.0,
+      "mrr": 0.9791666666666666,
+      "mean_latency_s": 0.9842756642922593
+    }
+  ],
+  "by_category_hit_at_5": {
+    "rag_fact": {
+      "dense": 1.0,
+      "sparse": 1.0,
+      "hybrid": 1.0,
+      "hybrid+rerank": 1.0
+    },
+    "rag_followup": {
+      "dense": 1.0,
+      "sparse": 1.0,
+      "hybrid": 1.0,
+      "hybrid+rerank": 1.0
+    },
+    "rag_lexical": {
+      "dense": 1.0,
+      "sparse": 1.0,
+      "hybrid": 1.0,
+      "hybrid+rerank": 1.0
+    },
+    "rag_paraphrase": {
+      "dense": 1.0,
+      "sparse": 1.0,
+      "hybrid": 1.0,
+      "hybrid+rerank": 1.0
+    }
+  },
+  "cases": [
+    {
+      "id": "r01",
+      "category": "rag_fact",
+      "query": "What port does Orbit listen on by default?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 1,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.9997878670692444
+    },
+    {
+      "id": "r02",
+      "category": "rag_fact",
+      "query": "How many times does Orbit retry a failed job by default?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 1,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.9996168613433838
+    },
+    {
+      "id": "r03",
+      "category": "rag_fact",
+      "query": "What is the default job timeout in Orbit?",
+      "ranks": {
+        "dense": 2,
+        "sparse": 1,
+        "hybrid": 2,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.9996800422668457
+    },
+    {
+      "id": "r04",
+      "category": "rag_fact",
+      "query": "How long does orbit drain wait for running jobs to finish?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 1,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.9994843006134033
+    },
+    {
+      "id": "r05",
+      "category": "rag_fact",
+      "query": "How many days are Orbit audit logs retained?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 1,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.99994957447052
+    },
+    {
+      "id": "r06",
+      "category": "rag_fact",
+      "query": "What is the minimum length of a dashboard password?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 2,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.9903740882873535
+    },
+    {
+      "id": "r07",
+      "category": "rag_fact",
+      "query": "What is the Orbit API rate limit per token?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 1,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.9980679154396057
+    },
+    {
+      "id": "r08",
+      "category": "rag_fact",
+      "query": "What is the maximum page size for list endpoints?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 1,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.9993757605552673
+    },
+    {
+      "id": "r09",
+      "category": "rag_fact",
+      "query": "How long are idempotency keys valid?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 1,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.9996737241744995
+    },
+    {
+      "id": "r10",
+      "category": "rag_fact",
+      "query": "What monthly uptime does the Orbit Cloud SLA commit to?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 1,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.9997236132621765
+    },
+    {
+      "id": "r11",
+      "category": "rag_fact",
+      "query": "How often does Orbit Cloud take backups?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 1,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.9998575448989868
+    },
+    {
+      "id": "r12",
+      "category": "rag_fact",
+      "query": "In which Orbit release was TLS 1.2 disabled?",
+      "ranks": {
+        "dense": 2,
+        "sparse": 2,
+        "hybrid": 2,
+        "hybrid+rerank": 2
+      },
+      "top_score": 0.9996286630630493
+    },
+    {
+      "id": "l01",
+      "category": "rag_lexical",
+      "query": "What does error ORB-2210 mean?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 1,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.9997404217720032
+    },
+    {
+      "id": "l02",
+      "category": "rag_lexical",
+      "query": "How do I fix error ORB-3307?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 1,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.9981478452682495
+    },
+    {
+      "id": "l03",
+      "category": "rag_lexical",
+      "query": "What is the value of LEASE_SECONDS?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 1,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.988114595413208
+    },
+    {
+      "id": "l04",
+      "category": "rag_lexical",
+      "query": "What is the X-Orbit-Signature header used for?",
+      "ranks": {
+        "dense": 2,
+        "sparse": 2,
+        "hybrid": 2,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.9986134767532349
+    },
+    {
+      "id": "p01",
+      "category": "rag_paraphrase",
+      "query": "How long can a worker hold a job before the system takes it back?",
+      "ranks": {
+        "dense": 2,
+        "sparse": 3,
+        "hybrid": 4,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.3734859824180603
+    },
+    {
+      "id": "p02",
+      "category": "rag_paraphrase",
+      "query": "After how many wrong password attempts is an account locked?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 1,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.9922947883605957
+    },
+    {
+      "id": "p03",
+      "category": "rag_paraphrase",
+      "query": "What is the longest wait between automatic retries?",
+      "ranks": {
+        "dense": 4,
+        "sparse": 1,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.007364264223724604
+    },
+    {
+      "id": "p04",
+      "category": "rag_paraphrase",
+      "query": "How large can a request body be?",
+      "ranks": {
+        "dense": 2,
+        "sparse": 2,
+        "hybrid": 2,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.9743537306785583
+    },
+    {
+      "id": "f01",
+      "category": "rag_followup",
+      "query": "Can I change the port the Orbit server listens on?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 1,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.9995526671409607
+    },
+    {
+      "id": "f02",
+      "category": "rag_followup",
+      "query": "How long does Orbit Cloud keep backups?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 1,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.9998292922973633
+    },
+    {
+      "id": "f03",
+      "category": "rag_followup",
+      "query": "What happens when I exceed the Orbit API rate limit?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 3,
+        "hybrid": 2,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.21566341817378998
+    },
+    {
+      "id": "f04",
+      "category": "rag_followup",
+      "query": "How do I fix error ORB-1042?",
+      "ranks": {
+        "dense": 1,
+        "sparse": 1,
+        "hybrid": 1,
+        "hybrid+rerank": 1
+      },
+      "top_score": 0.999382734298706
+    },
+    {
+      "id": "a01",
+      "category": "abstain",
+      "query": "How much does Orbit Cloud cost per month?",
+      "ranks": {},
+      "top_score": 0.9909769296646118
+    },
+    {
+      "id": "a02",
+      "category": "abstain",
+      "query": "Who is the CEO of Orbit?",
+      "ranks": {},
+      "top_score": 0.0033563419710844755
+    },
+    {
+      "id": "a03",
+      "category": "abstain",
+      "query": "Does Orbit support GPU scheduling?",
+      "ranks": {},
+      "top_score": 0.7825344204902649
+    },
+    {
+      "id": "a04",
+      "category": "abstain",
+      "query": "What is Orbit's refund policy?",
+      "ranks": {},
+      "top_score": 0.013952745124697685
+    }
+  ],
+  "calibration": {
+    "n_positive": 24,
+    "n_negative": 4,
+    "min_positive": 0.007364264223724604,
+    "max_negative": 0.9909769296646118,
+    "separable": false,
+    "recommended": 0.11480808164924383,
+    "best_accuracy": 0.8928571428571429,
+    "current": 0.25,
+    "current_accuracy": 0.8571428571428571
+  }
+}
